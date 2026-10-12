@@ -1,0 +1,28 @@
+# One-click setup for Render (https://render.com): New + > Blueprint > pick this repo.
+services:
+  - type: web
+    name: weather-now
+    runtime: node
+    plan: free   # free = accounts reset on restart; use a paid plan + disk to keep them
+    buildCommand: npm install -g pnpm@10 && NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @workspace/web-app run build && pnpm --filter @workspace/api-server run build
+    startCommand: pnpm --filter @workspace/api-server run start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: DEFAULT_COUNTRY_CODE
+        value: "+91"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM
+        sync: false

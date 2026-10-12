@@ -1,0 +1,39 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# build output
+dist
+tmp
+out-tsc
+*.tsbuildinfo
+
+# environment / secrets
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editors
+/.idea
+.project
+.classpath
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# local login data (users and session secret)
+backend/api-server/data/

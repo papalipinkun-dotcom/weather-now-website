@@ -1,0 +1,427 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Weather Now edge sensor, risk, forecast, and demo-control API.
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: microheat
+    description: Micro-weather monitoring, forecasts, alerts, and simulation controls
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [microheat]
+      summary: Get the overview dashboard snapshot
+      responses:
+        "200":
+          description: Current dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSnapshot"
+  /nodes:
+    get:
+      operationId: getNodes
+      tags: [microheat]
+      summary: List monitored edge nodes
+      responses:
+        "200":
+          description: Monitored nodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NodeSummary"
+  /nodes/{nodeId}:
+    get:
+      operationId: getNode
+      tags: [microheat]
+      summary: Get a node's latest status
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current node status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeSummary"
+        "404":
+          description: Node not found
+  /nodes/{nodeId}/readings:
+    get:
+      operationId: getNodeReadings
+      tags: [microheat]
+      summary: Get recent sensor readings for a node
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recent readings, newest last
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SensorReading"
+        "404":
+          description: Node not found
+  /heatmap:
+    get:
+      operationId: getHeatmap
+      tags: [microheat]
+      summary: Get city heatmap nodes and risk totals
+      responses:
+        "200":
+          description: City heatmap data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeatmapSnapshot"
+  /forecast/{nodeId}:
+    get:
+      operationId: getForecast
+      tags: [microheat]
+      summary: Get the short-range heat forecast for a node
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Short-range forecast
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForecastSnapshot"
+        "404":
+          description: Node not found
+  /alerts:
+    get:
+      operationId: getAlerts
+      tags: [microheat]
+      summary: List generated heat-risk alerts
+      responses:
+        "200":
+          description: Alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HeatAlert"
+  /alerts/{alertId}:
+    patch:
+      operationId: updateAlert
+      tags: [microheat]
+      summary: Acknowledge an alert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertUpdate"
+      responses:
+        "200":
+          description: Updated alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeatAlert"
+        "404":
+          description: Alert not found
+  /sensor-data:
+    post:
+      operationId: ingestSensorData
+      tags: [microheat]
+      summary: Ingest a reading from a physical edge device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SensorReadingInput"
+      responses:
+        "201":
+          description: Accepted sensor reading
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SensorReading"
+        "400":
+          description: Invalid sensor payload
+        "404":
+          description: Node not found
+  /simulation:
+    get:
+      operationId: getSimulation
+      tags: [microheat]
+      summary: Get current demo simulation controls
+      responses:
+        "200":
+          description: Simulation state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationState"
+    patch:
+      operationId: updateSimulation
+      tags: [microheat]
+      summary: Change the heatwave scenario or network state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationUpdate"
+      responses:
+        "200":
+          description: Updated simulation state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulationState"
+  /actions:
+    post:
+      operationId: triggerWorkerAction
+      tags: [microheat]
+      summary: Trigger a simulated worker safety action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkerActionInput"
+      responses:
+        "201":
+          description: Simulated action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkerAction"
+        "404":
+          description: Node not found
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    RiskLevel:
+      type: string
+      enum: [MODERATE, HIGH, EXTREME]
+    DataSource:
+      type: string
+      enum: [DEMO, EDGE_DEVICE, LIVE_WEATHER]
+    NodeSummary:
+      type: object
+      required: [id, name, siteType, city, location, latitude, longitude, riskLevel, temperatureC, humidityPct, wbgtC, heatIndexC, radiantTemperatureC, windSpeedMps, solarExposureLux, updatedAt, source]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        siteType: { type: string }
+        city: { type: string }
+        location: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        riskLevel: { $ref: "#/components/schemas/RiskLevel" }
+        temperatureC: { type: number }
+        humidityPct: { type: number }
+        wbgtC: { type: number }
+        heatIndexC: { type: number }
+        radiantTemperatureC: { type: number }
+        windSpeedMps: { type: number }
+        solarExposureLux: { type: integer }
+        updatedAt: { type: string }
+        source: { $ref: "#/components/schemas/DataSource" }
+        previousHour: { $ref: "#/components/schemas/SensorReading" }
+    ForecastPoint:
+      type: object
+      required: [time, temperatureC, wbgtC, heatIndexC, confidencePct, riskLevel]
+      properties:
+        time: { type: string }
+        temperatureC: { type: number }
+        wbgtC: { type: number }
+        heatIndexC: { type: number }
+        confidencePct: { type: integer }
+        riskLevel: { $ref: "#/components/schemas/RiskLevel" }
+    ForecastSnapshot:
+      type: object
+      required: [nodeId, generatedAt, horizonMinutes, model, simulated, points]
+      properties:
+        nodeId: { type: string }
+        generatedAt: { type: string }
+        horizonMinutes: { type: integer }
+        model: { type: string }
+        simulated: { type: boolean }
+        points:
+          type: array
+          items: { $ref: "#/components/schemas/ForecastPoint" }
+    DashboardSnapshot:
+      type: object
+      required: [primaryNode, officialStationTemperatureC, temperatureDifferenceC, forecast, history, activeAlertCount, monitoredNodeCount, systemStatus]
+      properties:
+        primaryNode: { $ref: "#/components/schemas/NodeSummary" }
+        officialStationTemperatureC: { type: number }
+        temperatureDifferenceC: { type: number }
+        forecast:
+          type: array
+          items: { $ref: "#/components/schemas/ForecastPoint" }
+        history:
+          type: array
+          items: { $ref: "#/components/schemas/SensorReading" }
+        activeAlertCount: { type: integer }
+        monitoredNodeCount: { type: integer }
+        systemStatus: { type: string }
+    HeatmapSnapshot:
+      type: object
+      required: [updatedAt, cities, counts, nodes]
+      properties:
+        updatedAt: { type: string }
+        cities: { type: integer }
+        counts:
+          type: object
+          required: [moderate, high, extreme]
+          properties:
+            moderate: { type: integer }
+            high: { type: integer }
+            extreme: { type: integer }
+        nodes:
+          type: array
+          items: { $ref: "#/components/schemas/NodeSummary" }
+    SensorReading:
+      type: object
+      required: [id, nodeId, observedAt, temperatureC, humidityPct, radiantTemperatureC, windSpeedMps, solarExposureLux, wbgtC, heatIndexC, riskLevel, source]
+      properties:
+        id: { type: string }
+        nodeId: { type: string }
+        observedAt: { type: string }
+        temperatureC: { type: number }
+        humidityPct: { type: number }
+        radiantTemperatureC: { type: number }
+        windSpeedMps: { type: number }
+        solarExposureLux: { type: integer }
+        wbgtC: { type: number }
+        heatIndexC: { type: number }
+        riskLevel: { $ref: "#/components/schemas/RiskLevel" }
+        source: { $ref: "#/components/schemas/DataSource" }
+    SensorReadingInput:
+      type: object
+      required: [nodeId, temperatureC, humidityPct, radiantTemperatureC, windSpeedMps, solarExposureLux]
+      properties:
+        nodeId: { type: string }
+        observedAt: { type: string }
+        temperatureC: { type: number, minimum: -20, maximum: 70 }
+        humidityPct: { type: number, minimum: 0, maximum: 100 }
+        radiantTemperatureC: { type: number, minimum: -20, maximum: 90 }
+        windSpeedMps: { type: number, minimum: 0, maximum: 60 }
+        solarExposureLux: { type: integer, minimum: 0, maximum: 200000 }
+        wbgtC: { type: number, minimum: -20, maximum: 70 }
+        heatIndexC: { type: number, minimum: -20, maximum: 90 }
+    HeatAlert:
+      type: object
+      required: [id, type, title, description, severity, nodeId, location, recommendation, createdAt, status]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        title: { type: string }
+        description: { type: string }
+        severity: { $ref: "#/components/schemas/RiskLevel" }
+        nodeId: { type: string }
+        location: { type: string }
+        recommendation: { type: string }
+        createdAt: { type: string }
+        status:
+          type: string
+          enum: [ACTIVE, ACKNOWLEDGED]
+    AlertUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ACKNOWLEDGED]
+    SimulationState:
+      type: object
+      required: [scenario, networkOnline, step, edgeAiRunning, bufferedReadings, updatedAt]
+      properties:
+        scenario:
+          type: string
+          enum: [NORMAL, HEATWAVE]
+        networkOnline: { type: boolean }
+        step: { type: integer }
+        edgeAiRunning: { type: boolean }
+        bufferedReadings: { type: integer }
+        updatedAt: { type: string }
+    SimulationUpdate:
+      type: object
+      properties:
+        scenario:
+          type: string
+          enum: [NORMAL, HEATWAVE]
+        networkOnline: { type: boolean }
+    WorkerActionInput:
+      type: object
+      required: [nodeId, action, recipient]
+      properties:
+        nodeId: { type: string }
+        action:
+          type: string
+          enum: [FAN_ON, REST_BREAK]
+        recipient: { type: string, minLength: 1 }
+    WorkerAction:
+      type: object
+      required: [id, nodeId, action, recipient, message, status, simulated, createdAt]
+      properties:
+        id: { type: string }
+        nodeId: { type: string }
+        action:
+          type: string
+          enum: [FAN_ON, REST_BREAK]
+        recipient: { type: string }
+        message: { type: string }
+        status:
+          type: string
+          enum: [TRIGGERED]
+        simulated: { type: boolean }
+        createdAt: { type: string }
+
